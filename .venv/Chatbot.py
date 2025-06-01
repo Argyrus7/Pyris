@@ -14,6 +14,8 @@ os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 
 # Upload PDF files
 st.header("Pyris")
+"by Argyrus"
+"Upload your file and you can ask questions about the content."
 
 with  st.sidebar:
     st.title("Your Documents")
