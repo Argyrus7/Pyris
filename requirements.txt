@@ -3,3 +3,4 @@ PyPDF2
 langchain-google-genai
 langchain-google-vertexai
 langchain-google-community
+FAISS
