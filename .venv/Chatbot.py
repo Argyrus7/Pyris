@@ -9,9 +9,9 @@ from langchain_google_genai import (
 )
 from langchain_community.vectorstores import FAISS
 
-# =========================
-# PAGE CONFIG
-# =========================
+# ==========================================
+# CONFIG
+# ==========================================
 
 st.set_page_config(
     page_title="Pyris",
@@ -22,12 +22,11 @@ st.header("Pyris")
 st.caption("by Argyrus")
 st.write("Upload your PDF and ask questions about its content.")
 
-# =========================
-# API KEY
-# =========================
+# ==========================================
+# GOOGLE API KEY
+# ==========================================
 
-# Recommended for Streamlit Cloud:
-# Put your key in Secrets:
+# For Streamlit Cloud, put your key in Secrets:
 # GOOGLE_API_KEY="your_key"
 
 try:
@@ -41,9 +40,9 @@ if not GOOGLE_API_KEY:
 
 os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 
-# =========================
+# ==========================================
 # SIDEBAR
-# =========================
+# ==========================================
 
 with st.sidebar:
     st.title("Your Documents")
@@ -52,9 +51,9 @@ with st.sidebar:
         type=["pdf"]
     )
 
-# =========================
-# PROCESS PDF
-# =========================
+# ==========================================
+# PDF PROCESSING
+# ==========================================
 
 if file is not None:
 
@@ -75,9 +74,9 @@ if file is not None:
             )
             st.stop()
 
-        # =========================
-        # SPLIT INTO CHUNKS
-        # =========================
+        # ==========================================
+        # TEXT SPLITTING
+        # ==========================================
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -91,30 +90,39 @@ if file is not None:
             st.error("No text chunks generated.")
             st.stop()
 
-        # =========================
+        # ==========================================
         # EMBEDDINGS
-        # =========================
+        # ==========================================
 
-        embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001"
-        )
+        try:
+            embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/embedding-001"
+            )
 
-        # =========================
+            # Test embedding immediately
+            embeddings.embed_query("test")
+
+        except Exception as e:
+            st.error(f"Embedding Model Error: {str(e)}")
+            st.stop()
+
+        # ==========================================
         # VECTOR STORE
-        # =========================
+        # ==========================================
 
         try:
             vector_store = FAISS.from_texts(
                 chunks,
                 embeddings
             )
+
         except Exception as e:
-            st.error(f"Embedding Error: {str(e)}")
+            st.error(f"FAISS Error: {str(e)}")
             st.stop()
 
-        # =========================
-        # QUESTION BOX
-        # =========================
+        # ==========================================
+        # QUESTION INPUT
+        # ==========================================
 
         user_question = st.text_input(
             "Ask a question about your PDF"
@@ -132,8 +140,9 @@ if file is not None:
             )
 
             prompt = f"""
-Answer the user's question using ONLY
-the information contained in the context.
+You are a helpful PDF assistant.
+
+Answer ONLY using information found in the context below.
 
 Context:
 {context}
@@ -155,5 +164,5 @@ Answer:
             st.write(response.content)
 
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Unexpected Error: {str(e)}")
 
