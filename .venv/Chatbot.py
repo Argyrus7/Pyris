@@ -96,7 +96,7 @@ if file is not None:
         # =========================
 
         embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004"
+            model="models/embedding-001"
         )
 
         # =========================
