@@ -1,4 +1,3 @@
-pip install --upgrade pip
 streamlit
 pypdf2
 faiss-cpu==1.8.0
