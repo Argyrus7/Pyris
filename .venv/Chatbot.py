@@ -1,16 +1,10 @@
 import os
 import streamlit as st
 from PyPDF2 import PdfReader
-
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import (
-    GoogleGenerativeAIEmbeddings,
-    ChatGoogleGenerativeAI,
-)
-from langchain_community.vectorstores import FAISS
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # ==========================================
-# CONFIG
+# PAGE CONFIG
 # ==========================================
 
 st.set_page_config(
@@ -25,9 +19,6 @@ st.write("Upload your PDF and ask questions about its content.")
 # ==========================================
 # GOOGLE API KEY
 # ==========================================
-
-# For Streamlit Cloud, put your key in Secrets:
-# GOOGLE_API_KEY="your_key"
 
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -69,60 +60,12 @@ if file is not None:
                 text += page_text + "\n"
 
         if not text.strip():
-            st.error(
-                "No readable text found in this PDF."
-            )
+            st.error("No readable text found in this PDF.")
             st.stop()
 
-        # ==========================================
-        # TEXT SPLITTING
-        # ==========================================
-
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=150,
-            separators=["\n", " ", ""]
+        st.success(
+            f"PDF loaded successfully ({len(text):,} characters)"
         )
-
-        chunks = text_splitter.split_text(text)
-
-        if not chunks:
-            st.error("No text chunks generated.")
-            st.stop()
-
-        # ==========================================
-        # EMBEDDINGS
-        # ==========================================
-
-        try:
-            embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/embedding-001"
-            )
-
-            # Test embedding immediately
-            embeddings.embed_query("test")
-
-        except Exception as e:
-            st.error(f"Embedding Model Error: {str(e)}")
-            st.stop()
-
-        # ==========================================
-        # VECTOR STORE
-        # ==========================================
-
-        try:
-            vector_store = FAISS.from_texts(
-                chunks,
-                embeddings
-            )
-
-        except Exception as e:
-            st.error(f"FAISS Error: {str(e)}")
-            st.stop()
-
-        # ==========================================
-        # QUESTION INPUT
-        # ==========================================
 
         user_question = st.text_input(
             "Ask a question about your PDF"
@@ -130,39 +73,39 @@ if file is not None:
 
         if user_question:
 
-            docs = vector_store.similarity_search(
-                user_question,
-                k=4
-            )
+            with st.spinner("Analyzing PDF..."):
 
-            context = "\n\n".join(
-                [doc.page_content for doc in docs]
-            )
+                # Prevent context overflow
+                max_chars = 500000
+                pdf_content = text[:max_chars]
 
-            prompt = f"""
-You are a helpful PDF assistant.
+                prompt = f"""
+You are a PDF assistant.
 
-Answer ONLY using information found in the context below.
+Answer the user's question using ONLY the information
+contained in the PDF content below.
 
-Context:
-{context}
+If the answer is not present in the PDF, say:
+"I could not find that information in the document."
 
-Question:
+PDF CONTENT:
+{pdf_content}
+
+QUESTION:
 {user_question}
 
-Answer:
+ANSWER:
 """
 
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
-                temperature=0
-            )
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-1.5-flash",
+                    temperature=0
+                )
 
-            response = llm.invoke(prompt)
+                response = llm.invoke(prompt)
 
-            st.subheader("Answer")
-            st.write(response.content)
+                st.subheader("Answer")
+                st.write(response.content)
 
     except Exception as e:
-        st.error(f"Unexpected Error: {str(e)}")
-
+        st.error(f"Error: {str(e)}")
